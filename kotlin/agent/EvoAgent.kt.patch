@@ -1,0 +1,173 @@
+package com.futevolution.evo.agent
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Modifications to EvoAgent.kt — add runCounter + new crawler steps
+// ══════════════════════════════════════════════════════════════════════════════
+
+import com.futevolution.evo.crawlers.*
+import com.futevolution.evo.engagement.*
+
+// ── Add these fields to the EvoAgent class ──
+
+/** Run counter — incremented each cycle, used for cadence gating. */
+private var runCounter: Long = 0
+
+// Crawler instances (initialize in constructor or init block)
+private val twitchCrawler = TwitchCrawler(config, httpClient)
+private val futbinCommentsCrawler = FutbinCommentsCrawler(config, dbConnection)
+private val futbinReviewsCrawler = FutbinReviewsCrawler(config)
+private val twitterCrawler = TwitterCrawler(config, httpClient)
+private val futggCrawler = FutggCrawler(config, dbConnection)
+
+// Reddit engagement instances
+private val redditEngagementScanner = RedditEngagementScanner(config, dbConnection, httpClient)
+private val replyDrafter = ReplyDrafter(config, dbConnection, httpClient)
+private val redditPoster = RedditPoster(config, dbConnection, httpClient)
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Replace/extend the run() method body — add after existing crawl steps
+// ══════════════════════════════════════════════════════════════════════════════
+
+suspend fun run(runId: Long) {
+    runCounter++
+    val sourceCounts = mutableMapOf<String, Int>()
+
+    // ── Existing steps (always run) ──
+    // Step 1: Reddit
+    try {
+        val redditPosts = crawlReddit(runId)
+        sourceCounts["reddit"] = redditPosts
+    } catch (e: Exception) {
+        logError(runId, "reddit", e)
+    }
+
+    // Step 2: YouTube
+    try {
+        val ytCount = crawlYouTube(runId)
+        sourceCounts["youtube"] = ytCount
+    } catch (e: Exception) {
+        logError(runId, "youtube", e)
+    }
+
+    // Step 3: JeuxVideo
+    try {
+        val jvCount = crawlJeuxVideo(runId)
+        sourceCounts["jeuxvideo"] = jvCount
+    } catch (e: Exception) {
+        logError(runId, "jeuxvideo", e)
+    }
+
+    // ── NEW: Step 4 — Twitch (every run, cadence=1) ──
+    if (runCounter % config.cadenceTwitch == 0L) {
+        try {
+            logEvent(runId, "crawl_start", "twitch", mapOf("cadence" to config.cadenceTwitch, "runCounter" to runCounter))
+            val clips = twitchCrawler.crawl()
+            sourceCounts["twitch"] = clips.size
+            if (clips.isNotEmpty()) {
+                insightExtractor.extractFromTwitch(clips, runId)
+            }
+            logEvent(runId, "crawl_complete", "twitch", mapOf("clips" to clips.size))
+        } catch (e: Exception) {
+            logError(runId, "twitch", e)
+        }
+    }
+
+    // ── NEW: Step 5 — FUTBIN Comments (every 2nd run) ──
+    if (runCounter % config.cadenceFutbinComments == 0L) {
+        try {
+            logEvent(runId, "crawl_start", "futbin_comments", mapOf("cadence" to config.cadenceFutbinComments, "runCounter" to runCounter))
+            futbinCommentsCrawler.runCounter = runCounter  // Sync for priority tier selection
+            val comments = futbinCommentsCrawler.crawl()
+            sourceCounts["futbin_comments"] = comments.size
+            if (comments.isNotEmpty()) {
+                insightExtractor.extractFromFutbinComments(comments, runId)
+            }
+            logEvent(runId, "crawl_complete", "futbin_comments", mapOf("comments" to comments.size))
+        } catch (e: Exception) {
+            logError(runId, "futbin_comments", e)
+        }
+    }
+
+    // ── NEW: Step 6 — FUT.GG (every 3rd run) ──
+    if (runCounter % config.cadenceFutgg == 0L) {
+        try {
+            logEvent(runId, "crawl_start", "futgg", mapOf("cadence" to config.cadenceFutgg, "runCounter" to runCounter))
+            futggCrawler.runCounter = runCounter  // Sync for priority tier selection
+            val comments = futggCrawler.crawl()
+            sourceCounts["futgg"] = comments.size
+            if (comments.isNotEmpty()) {
+                insightExtractor.extractFromFutgg(comments, runId)
+            }
+            logEvent(runId, "crawl_complete", "futgg", mapOf("comments" to comments.size))
+        } catch (e: Exception) {
+            logError(runId, "futgg", e)
+        }
+    }
+
+    // ── NEW: Step 7 — FUTBIN Reviews (every 4th run) ──
+    if (runCounter % config.cadenceFutbinReviews == 0L) {
+        try {
+            logEvent(runId, "crawl_start", "futbin_reviews", mapOf("cadence" to config.cadenceFutbinReviews, "runCounter" to runCounter))
+            val reviews = futbinReviewsCrawler.crawl()
+            sourceCounts["futbin_reviews"] = reviews.size
+            if (reviews.isNotEmpty()) {
+                insightExtractor.extractFromFutbinReviews(reviews, runId)
+            }
+            logEvent(runId, "crawl_complete", "futbin_reviews", mapOf("articles" to reviews.size))
+        } catch (e: Exception) {
+            logError(runId, "futbin_reviews", e)
+        }
+    }
+
+    // ── NEW: Step 8 — Twitter/X (every 6th run) ──
+    if (runCounter % config.cadenceTwitter == 0L) {
+        try {
+            logEvent(runId, "crawl_start", "twitter", mapOf("cadence" to config.cadenceTwitter, "runCounter" to runCounter))
+            val tweets = twitterCrawler.crawl()
+            sourceCounts["twitter"] = tweets.size
+            if (tweets.isNotEmpty()) {
+                insightExtractor.extractFromTwitter(tweets, runId)
+            }
+            logEvent(runId, "crawl_complete", "twitter", mapOf("tweets" to tweets.size))
+        } catch (e: Exception) {
+            logError(runId, "twitter", e)
+        }
+    }
+
+    // ── NEW: Step 9 — Reddit Engagement (every 3rd run) ──
+    if (config.redditEngagementEnabled && runCounter % config.cadenceRedditEngagement == 0L) {
+        try {
+            logEvent(runId, "engagement_start", "reddit", mapOf("cadence" to config.cadenceRedditEngagement, "runCounter" to runCounter))
+
+            // 9a: Scan for relevant posts
+            val candidates = redditEngagementScanner.scan()
+            logEvent(runId, "engagement_scan", "reddit", mapOf("candidates" to candidates.size))
+
+            // 9b: Draft replies (up to daily remaining slots)
+            val dailyRemaining = config.redditMaxDailyComments - redditPoster.getPostedTodayCount()
+            val toDraft = candidates.take(dailyRemaining.coerceAtMost(3).coerceAtLeast(0))
+            var draftCount = 0
+            for (candidate in toDraft) {
+                val draft = replyDrafter.draft(candidate, runId)
+                if (draft != null) draftCount++
+            }
+
+            // 9c: Post any previously approved replies
+            val approvedCount = redditPoster.postApprovedReplies()
+
+            // 9d: Check engagement on previously posted comments
+            val metricsCount = redditPoster.updateEngagementMetrics()
+
+            sourceCounts["reddit_engagement"] = draftCount
+            logEvent(runId, "engagement_complete", "reddit", mapOf(
+                "drafted" to draftCount, "posted" to approvedCount, "metrics_updated" to metricsCount
+            ))
+        } catch (e: Exception) {
+            logError(runId, "reddit_engagement", e)
+        }
+    }
+
+    // Update run record with all source counts
+    updateRunSources(runId, sourceCounts)
+}

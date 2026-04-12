@@ -1,0 +1,52 @@
+// ── Add these fields to EvoConfig.kt class ──
+// After existing fields (redditUserAgent, youtubeApiKey, etc.)
+
+// ── Twitch ──
+val twitchClientId: String = props.getProperty("twitch.client.id", "")
+val twitchClientSecret: String = props.getProperty("twitch.client.secret", "")
+val twitchGameId: String = props.getProperty("twitch.game.id", "")  // FC 26 game ID on Twitch
+val twitchClipsLimit: Int = props.getProperty("twitch.clips.limit", "20").toInt()
+
+// ── Twitter / X ──
+val twitterBearerToken: String = props.getProperty("twitter.bearer.token", "")
+val twitterMonthlyQuota: Int = props.getProperty("twitter.monthly.quota", "500").toInt()
+val twitterQuotaFile: String = props.getProperty("twitter.quota.file", System.getProperty("user.home") + "/.evo-agent-twitter-quota.json")
+val twitterSearchQuery: String = props.getProperty("twitter.search.query", "from:UTSources OR from:FUTWIZ OR from:FutSheriff OR #FC26meta OR #FC26 meta")
+val twitterMonitorAccounts: List<String> = props.getProperty("twitter.monitor.accounts", "UTSources,FUTWIZ,FutSheriff,NickRTFM,AuzioMF").split(",").map { it.trim() }
+
+// ── FUTBIN ──
+val futbinDelayMs: Long = props.getProperty("futbin.delay.ms", "3000").toLong()
+val futbinMaxPlayersPerRun: Int = props.getProperty("futbin.max.players.per.run", "20").toInt()
+val futbinReviewsLimit: Int = props.getProperty("futbin.reviews.limit", "5").toInt()
+
+// ── FUT.GG ──
+val futggDelayMs: Long = props.getProperty("futgg.delay.ms", "3000").toLong()
+val futggMaxPlayersPerRun: Int = props.getProperty("futgg.max.players.per.run", "15").toInt()
+
+// ── Cadence (run every Nth cycle) ──
+val cadenceTwitch: Int = props.getProperty("cadence.twitch", "1").toInt()           // every run
+val cadenceFutbinComments: Int = props.getProperty("cadence.futbin.comments", "2").toInt() // every 2nd run
+val cadenceFutgg: Int = props.getProperty("cadence.futgg", "3").toInt()              // every 3rd run
+val cadenceFutbinReviews: Int = props.getProperty("cadence.futbin.reviews", "4").toInt()  // every 4th run
+val cadenceTwitter: Int = props.getProperty("cadence.twitter", "6").toInt()          // every 6th run
+
+// ── Reddit Engagement ──
+val redditEngagementEnabled: Boolean = props.getProperty("reddit.engagement.enabled", "false").toBoolean()
+val redditUsername: String = props.getProperty("reddit.username", "")
+val redditPassword: String = props.getProperty("reddit.password", "")
+val redditClientId: String = props.getProperty("reddit.client.id", "")
+val redditClientSecret: String = props.getProperty("reddit.client.secret", "")
+val redditUserAgent: String = props.getProperty("reddit.user.agent", "FC26:FutEvo:v1.0")
+val redditMaxDailyComments: Int = props.getProperty("reddit.max.daily.comments", "5").toInt()
+val redditSubreddits: List<String> = props.getProperty("reddit.subreddits", "EASportsFC,fut").split(",").map { it.trim() }
+val redditPostMaxAgeHours: Int = props.getProperty("reddit.post.max.age.hours", "12").toInt()
+val redditMinPostScore: Int = props.getProperty("reddit.min.post.score", "2").toInt()
+val cadenceRedditEngagement: Int = props.getProperty("cadence.reddit.engagement", "3").toInt()
+
+// ── Scraping User-Agents (rotated) ──
+val userAgents: List<String> = listOf(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+)

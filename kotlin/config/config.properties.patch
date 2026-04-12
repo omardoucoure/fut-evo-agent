@@ -1,0 +1,52 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Add these lines to ~/evo-agent/config.properties on MadMac
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Twitch (register free app at dev.twitch.tv) ──
+twitch.client.id=dtivcvvdf9yy51hwfbaanpvbm5jqiq
+twitch.client.secret=qfsxphsmcc3tgbmyzts220j9yncm5u
+twitch.game.id=          # FC 26 game ID — find via: GET https://api.twitch.tv/helix/games?name=EA+SPORTS+FC+26
+twitch.clips.limit=20
+
+# ── Twitter / X (free tier: 500 tweets/month) ──
+twitter.bearer.token=YOUR_TWITTER_BEARER_TOKEN
+twitter.monthly.quota=500
+twitter.quota.file=/Users/mad/.evo-agent-twitter-quota.json
+twitter.search.query=from:UTSources OR from:FUTWIZ OR from:FutSheriff OR #FC26meta OR #FC26 meta
+twitter.monitor.accounts=UTSources,FUTWIZ,FutSheriff,NickRTFM,AuzioMF
+
+# ── FUTBIN (HTML scraping — be respectful) ──
+futbin.delay.ms=3000
+futbin.max.players.per.run=30
+futbin.reviews.limit=5
+
+# ── FUT.GG (HTML scraping) ──
+futgg.delay.ms=3000
+futgg.max.players.per.run=25
+
+# ── Priority Players ──
+# Top 200 iconic/meta players are defined in PriorityPlayers.kt
+# Tier 1 (50 players): scraped every run — Ronaldo, Mbappé, Zidane, Icons...
+# Tier 2 (70 players): scraped every 2nd run — meta staples, more Icons
+# Tier 3 (80 players): scraped every 3rd run — rising stars, cult heroes
+# Priority players are always scraped BEFORE generic top-by-overall fill
+
+# ── Cadence (run source every Nth agent cycle) ──
+cadence.twitch=1
+cadence.futbin.comments=2
+cadence.futgg=3
+cadence.futbin.reviews=4
+cadence.twitter=6
+cadence.reddit.engagement=3
+
+# ── Reddit Engagement (post replies to squad questions) ──
+reddit.engagement.enabled=false
+reddit.username=
+reddit.password=
+reddit.client.id=
+reddit.client.secret=
+reddit.user.agent=FC26:FutEvo:v1.0
+reddit.max.daily.comments=5
+reddit.subreddits=EASportsFC,fut
+reddit.post.max.age.hours=12
+reddit.min.post.score=2
